@@ -1,0 +1,16 @@
+import { extractTables, checkBasis, biggestChunk } from "./why.js";
+const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { console.log("FAIL", m, JSON.stringify(a), JSON.stringify(b)); process.exitCode = 1; } };
+eq(extractTables("with a as (select * from test_results where attempt=1), b as (select 1) select extract(month from test_date) m from a join process_runs p on 1=1"), ["test_results", "process_runs"], "extract");
+eq(extractTables('select * from "lots" l join equipment e on 1=1'), ["lots", "equipment"], "quoted");
+const known = ["test_results", "process_runs", "lots"];
+const metrics = [{ name: "fail률" }];
+const sql = "select avg((result='fail')::int) from test_results where attempt = 1";
+eq(checkBasis({ tables: ["test_results"], conditions: ["첫 시도(attempt = 1)만"], metric: "fail률" }, sql, { known, metrics }).ok, true, "ok");
+eq(checkBasis({ tables: ["lots"], conditions: [], metric: "fail률" }, sql, { known, metrics }).ok, false, "table mismatch");
+eq(checkBasis({ tables: ["test_results"], conditions: ["첫 시도"], metric: "fail률" }, "select avg((result='fail')::int) from test_results", { known, metrics }).ok, false, "attempt missing");
+eq(checkBasis({ tables: ["test_results"], conditions: [], metric: "없는지표" }, sql, { known, metrics }).ok, false, "metric");
+eq(checkBasis(null, sql, { known, metrics }).ok, false, "null");
+const b = biggestChunk([{ test_item: "외관", equip_id: "EQ01", chunk_value: 4 }, { test_item: "치수", equip_id: "EQ02", chunk_value: 6 }, { test_item: "X", equip_id: "EQ3", chunk_value: 0 }]);
+eq([b.labels, b.value, b.total, b.pct, b.n], [["치수", "EQ02"], 6, 10, 60, 3], "chunk");
+eq(!!biggestChunk([{ a: "x" }]).error, true, "no col");
+console.log(process.exitCode ? "실패 있음" : "why 시험 통과");

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>품질·설비 SQL 앱</title>
+<link rel="stylesheet" href="static/app.css">
+</head>
+<body>
+<header><h1>품질·설비 SQL 앱</h1><span class="sub">반도체 후공정 · 질문을 쓰면 SQL로 바꿔 실행합니다</span></header>
+<nav id="tabs">
+  <button data-tab="prepared">준비된 질문</button>
+  <button data-tab="ask" class="on">묻기</button>
+  <button data-tab="tables">테이블</button>
+  <button data-tab="files">내 파일</button>
+</nav>
+<main>
+  <section id="prepared" hidden></section>
+  <section id="ask">
+    <textarea id="q" rows="3" placeholder="예) 2025년 10월 시험 첫 시도 fail률이 높은 이유를 시험 항목별, 식각 설비별로 쪼개서 설명해줘"></textarea>
+    <div class="row"><button id="go">묻기</button><span id="status"></span></div>
+    <p id="dbstatus" class="todo">데이터 준비 중…</p>
+    <div id="out" hidden>
+      <h3>SQL</h3>
+      <pre id="sql"></pre>
+      <p id="guard"></p>
+      <h3>결과</h3>
+      <p id="resinfo" class="todo"></p>
+      <div id="result" class="tbl"></div>
+      <div id="saveBox" class="row" hidden>
+        <input id="saveName" placeholder="이 질문의 이름" maxlength="60">
+        <button id="saveBtn" class="ghost">저장</button>
+        <span id="saveMsg"></span>
+      </div>
+      <h3>① 산출 근거</h3>
+      <div id="basis" class="box"></div>
+      <h3>② 원인 한 단계</h3>
+      <div id="cause" class="box"></div>
+    </div>
+  </section>
+  <section id="tables" hidden></section>
+  <section id="files" hidden></section>
+</main>
+<script type="module" src="static/main.js"></script>
+</body>
+</html>

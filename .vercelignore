@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+tools/
+다음달/
+__pycache__/
+*.pyc
+static/test_*.mjs

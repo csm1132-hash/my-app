@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "note": "검증한 질문과 SQL. 정의는 docs/데이터_사전.md 의 지표 정의 그대로. 읽기 전용 SELECT/WITH 만 담는다.",
+  "questions": [
+    {
+      "id": "p1",
+      "title": "시험 항목별 fail률 · 재시험률 · 재시험 통과율",
+      "question": "시험 항목별로 첫 시도 fail률, 재시험률, 재시험 통과율을 보여줘. 재시험률은 첫 시도가 fail인 건 중 재시험을 한 비율이야",
+      "metrics": ["fail률", "재시험률", "재시험 통과율"],
+      "sql": "WITH first_try AS (SELECT lot_id, test_item, result FROM test_results WHERE attempt = 1), retry AS (SELECT lot_id, test_item, result FROM test_results WHERE attempt = 2) SELECT f.test_item, count(*) AS first_cnt, sum((f.result = 'fail')::INT) AS first_fail_cnt, round(100.0 * avg((f.result = 'fail')::INT), 2) AS first_fail_pct, count(r.lot_id) FILTER (WHERE f.result = 'fail') AS retried_cnt, round(100.0 * count(r.lot_id) FILTER (WHERE f.result = 'fail') / nullif(sum((f.result = 'fail')::INT), 0), 2) AS retest_rate_pct, count(r.lot_id) AS retry_cnt, sum((r.result = 'pass')::INT) AS retry_pass_cnt, round(100.0 * sum((r.result = 'pass')::INT) / nullif(count(r.lot_id), 0), 2) AS retry_pass_pct FROM first_try f LEFT JOIN retry r ON r.lot_id = f.lot_id AND r.test_item = f.test_item GROUP BY f.test_item ORDER BY f.test_item"
+    },
+    {
+      "id": "p2",
+      "title": "월별 첫 시도 fail률 — 전체 vs 전기특성",
+      "question": "월별 시험 첫 시도 fail률을 전체와 전기특성으로 나눠 보여줘",
+      "metrics": ["fail률"],
+      "sql": "SELECT strftime(test_date, '%Y-%m') AS month, count(*) AS all_cnt, round(100.0 * avg((result = 'fail')::INT), 2) AS all_fail_pct, count(*) FILTER (WHERE test_item = '전기특성') AS elec_cnt, round(100.0 * avg((result = 'fail')::INT) FILTER (WHERE test_item = '전기특성'), 2) AS elec_fail_pct FROM test_results WHERE attempt = 1 GROUP BY 1 ORDER BY 1"
+    },
+    {
+      "id": "p3",
+      "title": "EQ16 월별 평균 진동 + 정비 이력",
+      "question": "설비 EQ16의 월별 평균 진동과 정비 이력(정비일, 종류)을 같이 보여줘",
+      "metrics": [],
+      "sql": "WITH v AS (SELECT strftime(sensor_date, '%Y-%m') AS month, round(avg(vibration), 2) AS avg_vibration, count(*) AS sensor_days FROM equipment_daily WHERE equip_id = 'EQ16' GROUP BY 1), m AS (SELECT strftime(log_date, '%Y-%m') AS month, count(*) AS maint_cnt, string_agg(strftime(log_date, '%Y-%m-%d') || ' ' || log_type, ', ' ORDER BY log_date) AS maint_detail FROM maintenance_logs WHERE equip_id = 'EQ16' GROUP BY 1) SELECT coalesce(v.month, m.month) AS month, v.avg_vibration, v.sensor_days, coalesce(m.maint_cnt, 0) AS maint_cnt, m.maint_detail FROM v FULL JOIN m ON v.month = m.month ORDER BY 1"
+    }
+  ]
+}

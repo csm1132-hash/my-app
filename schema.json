@@ -1,0 +1,110 @@
+{
+  "source": "docs/데이터_사전.md",
+  "company": "반도체 후공정 공장. 제품 4종(M-100~M-400)을 로트 단위로 증착→식각→본딩→패키징 4공정에 통과시키고, 외관·치수·전기특성·X-ray 4개 시험을 한다. 합성 데이터.",
+  "period": "2024-07-01 ~ 2025-12-31 (평일만)",
+  "sql_dialect": "DuckDB. 테이블 이름은 아래 name 그대로 쓴다. 날짜 컬럼은 DATE 로 읽힌다(월별은 date_trunc('month', 컬럼) 또는 strftime(컬럼, '%Y-%m')).",
+  "tables": [
+    {
+      "name": "equipment",
+      "grain": "설비 1대",
+      "rows": 60,
+      "key": ["equip_id"],
+      "columns": [
+        {"name": "equip_id", "type": "VARCHAR", "desc": "설비 번호 EQ01~EQ60", "examples": ["EQ01", "EQ02"]},
+        {"name": "equip_type", "type": "VARCHAR", "desc": "설비 종류 = 공정 이름 (종류마다 15대)", "examples": ["증착", "식각", "본딩", "패키징"]},
+        {"name": "line", "type": "VARCHAR", "desc": "라인 L1~L4", "examples": ["L1", "L2"]},
+        {"name": "vendor", "type": "VARCHAR", "desc": "제조사", "examples": ["B사", "C사"]},
+        {"name": "install_date", "type": "DATE", "desc": "설치일", "examples": ["2020-05-19", "2022-11-17"]}
+      ]
+    },
+    {
+      "name": "lots",
+      "grain": "생산 로트 1개",
+      "rows": 2882,
+      "key": ["lot_id"],
+      "columns": [
+        {"name": "lot_id", "type": "VARCHAR", "desc": "로트 번호", "examples": ["LOT000001", "LOT000002"]},
+        {"name": "product", "type": "VARCHAR", "desc": "제품 M-100~M-400", "examples": ["M-100", "M-400"]},
+        {"name": "start_date", "type": "DATE", "desc": "투입일", "examples": ["2024-07-01"]},
+        {"name": "qty_in", "type": "INTEGER", "desc": "투입 수량(개)", "examples": [800, 900, 1200]}
+      ]
+    },
+    {
+      "name": "process_runs",
+      "grain": "로트가 공정 1단계를 거친 이력 1건 (로트당 4건)",
+      "rows": 11504,
+      "key": ["run_id"],
+      "columns": [
+        {"name": "run_id", "type": "VARCHAR", "desc": "공정 이력 번호", "examples": ["RUN000001"]},
+        {"name": "lot_id", "type": "VARCHAR", "desc": "로트 번호 (lots.lot_id)", "examples": ["LOT000001"]},
+        {"name": "step", "type": "VARCHAR", "desc": "공정", "examples": ["증착", "식각", "본딩", "패키징"]},
+        {"name": "equip_id", "type": "VARCHAR", "desc": "그 공정에서 쓴 설비 (equipment.equip_id)", "examples": ["EQ06", "EQ01"]},
+        {"name": "run_date", "type": "DATE", "desc": "공정 일자", "examples": ["2024-07-01"]},
+        {"name": "qty_in", "type": "INTEGER", "desc": "투입 수량", "examples": [1200, 900]}
+      ]
+    },
+    {
+      "name": "test_results",
+      "grain": "로트의 시험 항목 1개의 시도 1회 (로트당 항목 4개, 재시험이 있으면 시도 2회)",
+      "rows": 11840,
+      "key": ["test_id"],
+      "columns": [
+        {"name": "test_id", "type": "VARCHAR", "desc": "시험 번호", "examples": ["TST000001"]},
+        {"name": "lot_id", "type": "VARCHAR", "desc": "로트 번호 (lots.lot_id)", "examples": ["LOT000001"]},
+        {"name": "test_item", "type": "VARCHAR", "desc": "시험 항목", "examples": ["외관", "치수", "전기특성", "X-ray"]},
+        {"name": "attempt", "type": "INTEGER", "desc": "시도 차수. 1 = 첫 시험, 2 = 재시험", "examples": [1, 2]},
+        {"name": "test_date", "type": "DATE", "desc": "시험일", "examples": ["2024-07-06"]},
+        {"name": "result", "type": "VARCHAR", "desc": "pass 또는 fail", "examples": ["pass", "fail"]},
+        {"name": "defect_type", "type": "VARCHAR", "desc": "불량 유형 (fail일 때만, pass는 빈 값)", "examples": ["스크래치"]},
+        {"name": "defect_qty", "type": "INTEGER", "desc": "불량 수량 (fail일 때만, pass는 0)", "examples": [43, 0]}
+      ]
+    },
+    {
+      "name": "equipment_daily",
+      "grain": "설비 1대의 하루 센서 평균 (평일만)",
+      "rows": 22200,
+      "key": ["equip_id", "sensor_date"],
+      "columns": [
+        {"name": "equip_id", "type": "VARCHAR", "desc": "설비 번호 (equipment.equip_id)", "examples": ["EQ01"]},
+        {"name": "sensor_date", "type": "DATE", "desc": "일자", "examples": ["2024-07-01"]},
+        {"name": "vibration", "type": "DOUBLE", "desc": "진동 (mm/s). 평소 약 2.1", "examples": [1.98, 2.16]},
+        {"name": "avg_temp", "type": "DOUBLE", "desc": "평균 온도(℃). 평소 약 72", "examples": [74.3, 70.2]},
+        {"name": "power_kwh", "type": "DOUBLE", "desc": "전력 사용량(kWh)", "examples": [292.0, 335.9]}
+      ]
+    },
+    {
+      "name": "maintenance_logs",
+      "grain": "정비 이력 1건",
+      "rows": 378,
+      "key": ["log_id"],
+      "columns": [
+        {"name": "log_id", "type": "VARCHAR", "desc": "정비 번호", "examples": ["MT00001"]},
+        {"name": "equip_id", "type": "VARCHAR", "desc": "설비 번호 (equipment.equip_id)", "examples": ["EQ22"]},
+        {"name": "log_date", "type": "DATE", "desc": "정비일", "examples": ["2024-07-01"]},
+        {"name": "log_type", "type": "VARCHAR", "desc": "정비 종류", "examples": ["정기PM", "긴급수리"]},
+        {"name": "downtime_h", "type": "DOUBLE", "desc": "가동 중단 시간(시간)", "examples": [7.0, 5.5]}
+      ]
+    }
+  ],
+  "relations": [
+    "lots 1 : 4 process_runs (lot_id)",
+    "lots 1 : 4~8 test_results (lot_id)",
+    "process_runs.equip_id → equipment.equip_id",
+    "equipment 1 : N equipment_daily (equip_id)",
+    "equipment 1 : N maintenance_logs (equip_id)"
+  ],
+  "metrics": [
+    {"name": "fail률", "definition": "result = 'fail'인 시험 건수 ÷ 시험 건수. 보통 첫 시도(attempt = 1) 기준으로 본다.", "sql_hint": "avg((result = 'fail')::INT) FROM test_results WHERE attempt = 1"},
+    {"name": "재시험률", "definition": "첫 시도가 fail인 건 중 attempt = 2 행이 있는 비율.", "sql_hint": null},
+    {"name": "재시험 통과율", "definition": "재시험(attempt = 2) 중 pass 비율.", "sql_hint": "avg((result = 'pass')::INT) FROM test_results WHERE attempt = 2"},
+    {"name": "불량 수량", "definition": "test_results.defect_qty 의 합.", "sql_hint": "sum(defect_qty)"},
+    {"name": "설비의 불량 기여", "definition": "그 설비를 거친 로트의 fail률. 로트 하나가 공정 4단계·시험 4항목을 가지므로 조인하면 행이 크게 늘어난다(process_runs 와 test_results 를 바로 조인하면 로트당 4×N행).", "sql_hint": "process_runs 와 test_results 를 lot_id 로 조인하되, 설비·로트 단위로 먼저 집계하거나 필요한 step 만 걸러서 조인"}
+  ],
+  "rules": [
+    "시험은 투입 5~6일 뒤에 하고, 재시험은 첫 시험 2일 뒤에 한다.",
+    "정기 PM(예방 정비)은 설비마다 약 90일 주기. PM을 건너뛴 설비의 진동은 서서히 올라간다.",
+    "로트는 공정마다 같은 종류 설비 15대 중 하나로 배정된다.",
+    "센서 값은 설비 1대의 하루 평균이라 로트와 직접 연결되지 않는다. 설비 번호와 날짜로 연결한다.",
+    "'월'별 시험 지표는 별말이 없으면 test_date 기준, 생산은 start_date 기준으로 본다."
+  ]
+}
